@@ -1,101 +1,103 @@
 import { catsData } from '/data.js'
 
-const emotionRadios = document.getElementById('emotion-radios')
+const emotionCheckboxes = document.getElementById('emotion-checkboxes')
 const getImageBtn = document.getElementById('get-image-btn')
 const gifsOnlyOption = document.getElementById('gifs-only-option')
 const memeModalInner = document.getElementById('meme-modal-inner')
 const memeModal = document.getElementById('meme-modal')
 const memeModalCloseBtn = document.getElementById('meme-modal-close-btn')
+const themeToggleBtn = document.getElementById('theme-toggle-btn')
+const getRandomBtn = document.getElementById('get-random-btn')
+const emotionSearch = document.getElementById('emotion-search')
 
-emotionRadios.addEventListener('change', highlightCheckedOption)
+const MAX_SELECTED_EMOTIONS = 3
 
+emotionCheckboxes.addEventListener('change', handleEmotionSelection)
 memeModalCloseBtn.addEventListener('click', closeModal)
+getImageBtn.addEventListener('click', renderCats)
+themeToggleBtn.addEventListener('click', toggleTheme)
+getRandomBtn.addEventListener('click', renderRandomCat)
+emotionSearch.addEventListener('input', filterEmotions)
 
-getImageBtn.addEventListener('click', renderCat)
+function renderEmotionsCheckboxes(cats) {
+    let emotionOptions = ''
+    const emotions = getUniqueEmotions(cats)
 
-function highlightCheckedOption(e) {
-    const radios = document.getElementsByClassName('radio')
-    for (let radio of radios) {
-        radio.classList.remove('highlight')
+    for (const emotion of emotions) {
+        emotionOptions += `
+        <div class="checkbox">
+            <label for="${emotion}">${emotion}</label>
+            <input
+            type="checkbox"
+            id="${emotion}"
+            name="emotions"
+            value="${emotion}">
+        </div>`
     }
-    document.getElementById(e.target.id).parentElement.classList.add('highlight')
+    emotionCheckboxes.innerHTML = emotionOptions
+}
+
+function getUniqueEmotions(cats) {
+    const emotionsArray = cats.map(cat => cat.emotionTags).flat()
+    const uniqueEmotions = [...new Set(emotionsArray)]
+    return uniqueEmotions
+}
+
+function handleEmotionSelection(e) {
+    const selectedCheckboxes = document.querySelectorAll('input[type="checkbox"]:checked')
+    const selectedEmotionCount = selectedCheckboxes.length
+
+    if (selectedEmotionCount > MAX_SELECTED_EMOTIONS) {
+        e.target.checked = false
+        alert(`You can only select up to ${MAX_SELECTED_EMOTIONS} emotions.`)
+    } else {
+        highlightSelectedOptions(selectedCheckboxes)
+    }
+}
+
+function highlightSelectedOptions(selectedCheckboxes) {
+    const checkboxes = document.querySelectorAll('.checkbox')
+    for (const checkbox of checkboxes) {
+        checkbox.classList.remove('selected')
+    }
+    selectedCheckboxes.forEach(checkbox => {
+        checkbox.parentElement.classList.add('selected')
+    })
+}
+
+function renderCats() {
+    const selectedEmotions = Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(checkbox => checkbox.value)
+    const isGif = gifsOnlyOption.checked
+
+    if (selectedEmotions.length > 0) {
+        const matchingCats = catsData.filter(cat => selectedEmotions.some(emotion => cat.emotionTags.includes(emotion)) && (isGif ? cat.isGif : true))
+        const randomCat = matchingCats[Math.floor(Math.random() * matchingCats.length)]
+
+        memeModalInner.innerHTML = `<img class="cat-img" src="./images/${randomCat.image}" alt="${randomCat.alt}">`
+        memeModal.style.display = 'flex'
+    }
 }
 
 function closeModal() {
     memeModal.style.display = 'none'
 }
 
-function renderCat() {
-    const catObject = getSingleCatObject()
-    memeModalInner.innerHTML = `
-        <img 
-        class="cat-img" 
-        src="./images/${catObject.image}"
-        alt="${catObject.alt}"
-        >
-        `
+function toggleTheme() {
+    document.body.classList.toggle('dark-mode')
+}
+
+function renderRandomCat() {
+    const randomCat = catsData[Math.floor(Math.random() * catsData.length)]
+
+    memeModalInner.innerHTML = `<img class="cat-img" src="./images/${randomCat.image}" alt="${randomCat.alt}">`
     memeModal.style.display = 'flex'
 }
 
-function getSingleCatObject() {
-    const catsArray = getMatchingCatsArray()
+function filterEmotions() {
+    const query = emotionSearch.value.toLowerCase()
+    const filteredCats = catsData.filter(cat => cat.emotionTags.some(tag => tag.includes(query)))
 
-    if (catsArray.length === 1) {
-        return catsArray[0]
-    }
-    else {
-        const randomNumber = Math.floor(Math.random() * catsArray.length)
-        return catsArray[randomNumber]
-    }
+    renderEmotionsCheckboxes(filteredCats)
 }
 
-function getMatchingCatsArray() {
-    if (document.querySelector('input[type="radio"]:checked')) {
-        const selectedEmotion = document.querySelector('input[type="radio"]:checked').value
-        const isGif = gifsOnlyOption.checked
-
-        const matchingCatsArray = catsData.filter(function (cat) {
-
-            if (isGif) {
-                return cat.emotionTags.includes(selectedEmotion) && cat.isGif
-            }
-            else {
-                return cat.emotionTags.includes(selectedEmotion)
-            }
-        })
-        return matchingCatsArray
-    }
-}
-
-function getEmotionsArray(cats) {
-    const emotionsArray = []
-    for (let cat of cats) {
-        for (let emotion of cat.emotionTags) {
-            if (!emotionsArray.includes(emotion)) {
-                emotionsArray.push(emotion)
-            }
-        }
-    }
-    return emotionsArray
-}
-
-function renderEmotionsRadios(cats) {
-
-    let radioItems = ``
-    const emotions = getEmotionsArray(cats)
-    for (let emotion of emotions) {
-        radioItems += `
-        <div class="radio">
-            <label for="${emotion}">${emotion}</label>
-            <input
-            type="radio"
-            id="${emotion}"
-            value="${emotion}"
-            name="emotions"
-            >
-        </div>`
-    }
-    emotionRadios.innerHTML = radioItems
-}
-
-renderEmotionsRadios(catsData)
+renderEmotionsCheckboxes(catsData)
